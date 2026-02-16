@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: Stagelog
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: false
+    show-sql: true
+  batch:
+    jdbc:
+      initialize-schema: never
+    job:
+      enabled: false
+
+logging:
+  file:
+    name: logs/bootstrap.log
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+  level:
+    com.stagelog: INFO
+    org.hibernate: OFF
+
+external:
+  kopis: ${KOPIS_API_KEY}
+  spotify:
+    client-id: ${SPOTIFY_CLIENT_ID}
+    client-secret: ${SPOTIFY_CLIENT_SECRET}
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity: 3600000      # 1시간
+  refresh-token-validity: 1209600000  # 14일

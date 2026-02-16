@@ -1,0 +1,40 @@
+### JetBrains IDE (IntelliJ 등) ###
+.idea/
+*.iml
+out/
+gen/
+
+### OS 관련 ###
+.DS_Store
+Thumbs.db
+
+### 로그 및 임시 파일 ###
+logs/
+*.log
+tmp/
+
+### Java / Spring (Stagelog_re_backend) ###
+**/build/
+**/target/
+**/.gradle/
+**/bin/
+!**/src/main/resources/dist/
+!**/src/test/resources/dist/
+
+### Node / Frontend (Stagelog_re_frontend) ###
+**/node_modules/
+**/dist/
+**/build/
+**/.next/
+**/.cache/
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/.env.local
+**/.env.development.local
+**/.env.test.local
+**/.env.production.local
+
+### 시스템 및 기타 ###
+.gradle
+build/
