@@ -13,6 +13,7 @@ public class JwtProperties {
     private String secret;
     private Long accessTokenValidity;
     private Long refreshTokenValidity;
+    private String refreshTokenPepper;
 
 
 }

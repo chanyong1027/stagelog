@@ -10,11 +10,14 @@ import com.stagelog.Stagelog.global.exception.ErrorCode;
 import com.stagelog.Stagelog.global.exception.UnauthorizedException;
 import com.stagelog.Stagelog.global.jwt.JwtProperties;
 import com.stagelog.Stagelog.global.jwt.JwtTokenProvider;
+import com.stagelog.Stagelog.global.jwt.RefreshTokenHasher;
 import com.stagelog.Stagelog.global.jwt.domain.RefreshToken;
 import com.stagelog.Stagelog.global.jwt.repository.RefreshTokenRepository;
 import com.stagelog.Stagelog.user.domain.User;
+import com.stagelog.Stagelog.user.domain.UserStatus;
 import com.stagelog.Stagelog.user.repository.UserRepository;
 import com.stagelog.Stagelog.user.service.UserService;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -27,8 +30,10 @@ public class AuthService {
     private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
+    private final RefreshTokenHasher refreshTokenHasher;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
+    private final LoginAttemptService loginAttemptService;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String userId) {
@@ -55,14 +60,23 @@ public class AuthService {
     }
 
     @Transactional
-    public AuthTokenResult login(LoginRequest request) {
-        User user = userRepository.findByUserId(request.getUserId())
-                .orElseThrow(() -> new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS));
+    public AuthTokenResult login(LoginRequest request, String clientIp) {
+        String userId = request.getUserId();
+        loginAttemptService.validateNotLocked(userId, clientIp);
+
+        User user = userRepository.findByUserId(userId)
+                .orElseThrow(() -> {
+                    loginAttemptService.recordFailure(userId, clientIp);
+                    return new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+                });
 
         if (!isValidPassword(request.getPassword(), user.getPassword())) {
+            loginAttemptService.recordFailure(userId, clientIp);
             throw new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
+        assertActiveUser(user);
+        loginAttemptService.clearFailures(userId, clientIp);
         user.updateLastLoginAt();
 
         return issueTokens(user);
@@ -78,6 +92,7 @@ public class AuthService {
                 request.getProviderId()
         );
 
+        assertActiveUser(user);
         return issueTokens(user);
     }
 
@@ -90,7 +105,8 @@ public class AuthService {
             throw new UnauthorizedException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
-        RefreshToken storedToken = refreshTokenRepository.findByRefreshToken(refreshTokenValue)
+        String refreshTokenHash = refreshTokenHasher.hash(refreshTokenValue);
+        RefreshToken storedToken = refreshTokenRepository.findByRefreshTokenHash(refreshTokenHash)
                 .orElseThrow(() -> new UnauthorizedException(ErrorCode.INVALID_REFRESH_TOKEN));
 
         if (storedToken.isExpired()) {
@@ -102,12 +118,18 @@ public class AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
 
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            refreshTokenRepository.delete(storedToken);
+            throw new UnauthorizedException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
+        }
+
         String role = user.getRole().getValue();
         String newAccessToken = jwtTokenProvider.createAccessToken(email, role);
         String newRefreshToken = jwtTokenProvider.createRefreshToken(email, role);
+        String newRefreshTokenHash = refreshTokenHasher.hash(newRefreshToken);
 
         // Refresh Token Rotation
-        storedToken.rotate(newRefreshToken, jwtProperties.getRefreshTokenValidity());
+        storedToken.rotate(newRefreshTokenHash, jwtProperties.getRefreshTokenValidity());
 
         return AuthTokenResult.of(
                 newAccessToken,
@@ -124,20 +146,20 @@ public class AuthService {
     }
 
     private AuthTokenResult issueTokens(User user) {
+        assertActiveUser(user);
+
         String email = user.getEmail();
         String role = user.getRole().getValue();
 
         String accessToken = jwtTokenProvider.createAccessToken(email, role);
         String refreshToken = jwtTokenProvider.createRefreshToken(email, role);
+        String refreshTokenHash = refreshTokenHasher.hash(refreshToken);
 
-        // 기존 Refresh Token이 있으면 교체, 없으면 새로 생성
-        refreshTokenRepository.findByEmail(email)
-                .ifPresentOrElse(
-                        token -> token.rotate(refreshToken, jwtProperties.getRefreshTokenValidity()),
-                        () -> refreshTokenRepository.save(
-                                RefreshToken.create(email, refreshToken, jwtProperties.getRefreshTokenValidity())
-                        )
-                );
+        refreshTokenRepository.upsertByEmail(
+                email,
+                refreshTokenHash,
+                LocalDateTime.now().plusSeconds(jwtProperties.getRefreshTokenValidity() / 1000)
+        );
 
         return AuthTokenResult.of(
                 accessToken,
@@ -153,6 +175,12 @@ public class AuthService {
             return passwordEncoder.matches(rawPassword, encodedPassword);
         } catch (IllegalArgumentException e) {
             return false;
+        }
+    }
+
+    private void assertActiveUser(User user) {
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new UnauthorizedException(ErrorCode.AUTH_ACCOUNT_BLOCKED);
         }
     }
 }

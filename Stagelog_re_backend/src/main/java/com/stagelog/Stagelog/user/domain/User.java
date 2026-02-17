@@ -52,7 +52,7 @@ public class User extends BaseEntity {
     private String profileImageUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "sosical_provider_type", nullable = false)
+    @Column(name = "social_provider_type", nullable = false)
     private Provider provider;
 
     @Column(name = "provider_id")

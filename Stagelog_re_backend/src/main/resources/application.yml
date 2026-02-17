@@ -36,5 +36,6 @@ external:
 
 jwt:
   secret: ${JWT_SECRET}
+  refresh-token-pepper: ${JWT_REFRESH_PEPPER}
   access-token-validity: 3600000      # 1시간
   refresh-token-validity: 1209600000  # 14일

@@ -22,25 +22,25 @@ public class RefreshToken extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "refresh_token", nullable = false, length = 512)
-    private String refreshToken;
+    @Column(name = "refresh_token_hash", nullable = false, length = 128)
+    private String refreshTokenHash;
 
     @Column(name = "expiry_date", nullable = false)
     private LocalDateTime expiryDate;
 
-    public static RefreshToken create(String email, String refreshToken, Long validityMillis) {
+    public static RefreshToken create(String email, String refreshTokenHash, Long validityMillis) {
         RefreshToken token = new RefreshToken();
         token.email = email;
-        token.refreshToken = refreshToken;
+        token.refreshTokenHash = refreshTokenHash;
         token.expiryDate = LocalDateTime.now().plusSeconds(validityMillis / 1000);
         return token;
     }
 
-    public void rotate(String newRefreshToken, Long validityMillis) {
-        this.refreshToken = newRefreshToken;
+    public void rotate(String newRefreshTokenHash, Long validityMillis) {
+        this.refreshTokenHash = newRefreshTokenHash;
         this.expiryDate = LocalDateTime.now().plusSeconds(validityMillis / 1000);
     }
 

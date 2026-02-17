@@ -11,6 +11,7 @@ import com.stagelog.Stagelog.global.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +45,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login(
             @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest,
             HttpServletResponse httpResponse
     ) {
-        AuthTokenResult result = authService.login(request);
+        String clientIp = resolveClientIp(httpRequest);
+        AuthTokenResult result = authService.login(request, clientIp);
         refreshTokenCookieManager.addRefreshTokenCookie(httpResponse, result.refreshToken());
         return ResponseEntity.ok(result.toTokenResponse());
     }
@@ -77,5 +80,22 @@ public class AuthController {
         authService.logout(userDetails.getUsername());
         refreshTokenCookieManager.expireRefreshTokenCookie(response);
         return ResponseEntity.noContent().build();
+    }
+
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (forwardedFor != null && !forwardedFor.isBlank()) {
+            String[] candidates = forwardedFor.split(",");
+            if (candidates.length > 0) {
+                return candidates[0].trim();
+            }
+        }
+
+        String realIp = request.getHeader("X-Real-IP");
+        if (realIp != null && !realIp.isBlank()) {
+            return realIp.trim();
+        }
+
+        return Objects.requireNonNullElse(request.getRemoteAddr(), "unknown");
     }
 }
