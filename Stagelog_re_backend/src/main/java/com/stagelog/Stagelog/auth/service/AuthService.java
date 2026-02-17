@@ -18,10 +18,12 @@ import com.stagelog.Stagelog.user.domain.UserStatus;
 import com.stagelog.Stagelog.user.repository.UserRepository;
 import com.stagelog.Stagelog.user.service.UserService;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -64,11 +66,12 @@ public class AuthService {
         String userId = request.getUserId();
         loginAttemptService.validateNotLocked(userId, clientIp);
 
-        User user = userRepository.findByUserId(userId)
-                .orElseThrow(() -> {
-                    loginAttemptService.recordFailure(userId, clientIp);
-                    return new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS);
-                });
+        Optional<User> userOpt = userRepository.findByUserId(userId);
+        if (userOpt.isEmpty()) {
+            loginAttemptService.recordFailure(userId, clientIp);
+            throw new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS);
+        }
+        User user = userOpt.get();
 
         if (!isValidPassword(request.getPassword(), user.getPassword())) {
             loginAttemptService.recordFailure(userId, clientIp);
@@ -98,6 +101,9 @@ public class AuthService {
 
     @Transactional
     public AuthTokenResult refresh(String refreshTokenValue) {
+        if (!StringUtils.hasText(refreshTokenValue)) {
+            throw new UnauthorizedException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
         if (!jwtTokenProvider.validateToken(refreshTokenValue)) {
             throw new UnauthorizedException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
@@ -171,6 +177,9 @@ public class AuthService {
     }
 
     private boolean isValidPassword(String rawPassword, String encodedPassword) {
+        if (!StringUtils.hasText(encodedPassword)) {
+            return false;
+        }
         try {
             return passwordEncoder.matches(rawPassword, encodedPassword);
         } catch (IllegalArgumentException e) {

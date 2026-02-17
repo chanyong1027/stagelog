@@ -48,7 +48,7 @@ public class LoginAttempt extends BaseEntity {
         LoginAttempt attempt = new LoginAttempt();
         attempt.userId = userId;
         attempt.clientIp = clientIp;
-        attempt.failCount = 1;
+        attempt.failCount = 0;
         attempt.firstFailedAt = failedAt;
         attempt.lockedUntil = null;
         return attempt;
@@ -61,10 +61,12 @@ public class LoginAttempt extends BaseEntity {
             Duration lockDuration
     ) {
         if (isLockExpired(failedAt) || isFailureWindowExpired(failedAt, failureWindow)) {
-            resetFailures(failedAt);
-            return;
+            resetFailures();
         }
 
+        if (this.failCount == 0) {
+            this.firstFailedAt = failedAt;
+        }
         this.failCount += 1;
         if (this.failCount >= maxFailureCount) {
             this.lockedUntil = failedAt.plus(lockDuration);
@@ -83,9 +85,8 @@ public class LoginAttempt extends BaseEntity {
         return this.firstFailedAt.plus(failureWindow).isBefore(now);
     }
 
-    private void resetFailures(LocalDateTime failedAt) {
-        this.failCount = 1;
-        this.firstFailedAt = failedAt;
+    private void resetFailures() {
+        this.failCount = 0;
         this.lockedUntil = null;
     }
 }

@@ -23,9 +23,10 @@ class LoginAttemptTest {
         attempt.recordFailure(baseTime.plusMinutes(2), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
         attempt.recordFailure(baseTime.plusMinutes(3), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
         attempt.recordFailure(baseTime.plusMinutes(4), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
+        attempt.recordFailure(baseTime.plusMinutes(5), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
 
         assertThat(attempt.getFailCount()).isEqualTo(5);
-        assertThat(attempt.isLocked(baseTime.plusMinutes(5))).isTrue();
+        assertThat(attempt.isLocked(baseTime.plusMinutes(6))).isTrue();
     }
 
     @Test
@@ -38,11 +39,24 @@ class LoginAttemptTest {
         attempt.recordFailure(baseTime.plusMinutes(2), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
         attempt.recordFailure(baseTime.plusMinutes(3), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
         attempt.recordFailure(baseTime.plusMinutes(4), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
+        attempt.recordFailure(baseTime.plusMinutes(5), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
 
         LocalDateTime afterLockExpired = baseTime.plusMinutes(20);
         attempt.recordFailure(afterLockExpired, MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
 
         assertThat(attempt.getFailCount()).isEqualTo(1);
         assertThat(attempt.isLocked(afterLockExpired)).isFalse();
+    }
+
+    @Test
+    @DisplayName("최초 생성 시 실패 횟수는 0이며 첫 실패에서 1이 된다")
+    void create_startsFromZeroAndFirstRecordFailureSetsOne() {
+        LocalDateTime baseTime = LocalDateTime.of(2026, 1, 1, 10, 0);
+        LoginAttempt attempt = LoginAttempt.create("user1", "127.0.0.1", baseTime);
+
+        assertThat(attempt.getFailCount()).isEqualTo(0);
+        attempt.recordFailure(baseTime.plusMinutes(1), MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
+
+        assertThat(attempt.getFailCount()).isEqualTo(1);
     }
 }

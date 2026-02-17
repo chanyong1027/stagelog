@@ -27,7 +27,7 @@ public class RefreshTokenHasher {
 
     public String hash(String refreshToken) {
         if (!StringUtils.hasText(refreshToken)) {
-            return "";
+            throw new IllegalArgumentException("refreshToken must not be blank.");
         }
         try {
             Mac mac = Mac.getInstance(HMAC_ALGORITHM);

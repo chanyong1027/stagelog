@@ -19,6 +19,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+    public static final String TOKEN_ERROR_CODE_ATTRIBUTE = "jwtTokenErrorCode";
+    public static final String TOKEN_EXPIRED_CODE = "TOKEN_EXPIRED";
+    public static final String TOKEN_INVALID_CODE = "TOKEN_INVALID";
+
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
 
@@ -33,26 +37,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        if (jwtTokenProvider.validateToken(token)) {
-            if (!jwtTokenProvider.isAccessToken(token)) {
-                sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Access Token이 아닙니다.");
-                return;
-            }
-
-            Authentication authentication = jwtTokenProvider.getAuthentication(token);
-            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-            if (!userDetails.isEnabled()) {
-                sendErrorResponse(response, HttpStatus.FORBIDDEN, "탈퇴한 사용자입니다.");
-                return;
-            }
-            if (!userDetails.isAccountNonLocked()) {
-                sendErrorResponse(response, HttpStatus.FORBIDDEN, "정지된 사용자입니다.");
-                return;
-            }
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+        JwtTokenProvider.TokenValidationResult tokenValidationResult = jwtTokenProvider.getTokenValidationResult(token);
+        if (tokenValidationResult != JwtTokenProvider.TokenValidationResult.VALID) {
+            request.setAttribute(
+                    TOKEN_ERROR_CODE_ATTRIBUTE,
+                    tokenValidationResult == JwtTokenProvider.TokenValidationResult.EXPIRED
+                            ? TOKEN_EXPIRED_CODE
+                            : TOKEN_INVALID_CODE
+            );
+            filterChain.doFilter(request, response);
+            return;
         }
+
+        if (!jwtTokenProvider.isAccessToken(token)) {
+            sendErrorResponse(response, HttpStatus.UNAUTHORIZED, "Access Token이 아닙니다.");
+            return;
+        }
+
+        Authentication authentication = jwtTokenProvider.getAuthentication(token);
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        if (!userDetails.isEnabled()) {
+            sendErrorResponse(response, HttpStatus.FORBIDDEN, "탈퇴한 사용자입니다.");
+            return;
+        }
+        if (!userDetails.isAccountNonLocked()) {
+            sendErrorResponse(response, HttpStatus.FORBIDDEN, "정지된 사용자입니다.");
+            return;
+        }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
     }

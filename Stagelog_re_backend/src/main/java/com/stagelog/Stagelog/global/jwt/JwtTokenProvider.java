@@ -23,6 +23,12 @@ import org.springframework.util.StringUtils;
 @Component
 @RequiredArgsConstructor
 public class JwtTokenProvider {
+    public enum TokenValidationResult {
+        VALID,
+        EXPIRED,
+        INVALID
+    }
+
     private final JwtProperties jwtProperties;
     private final UserDetailsService userDetailsService;
     private SecretKey secretKey;
@@ -81,15 +87,20 @@ public class JwtTokenProvider {
     }
 
     public boolean validateToken(String token) {
+        return getTokenValidationResult(token) == TokenValidationResult.VALID;
+    }
+
+    public TokenValidationResult getTokenValidationResult(String token) {
         try {
             Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token);
-            return true;
+            return TokenValidationResult.VALID;
         } catch (ExpiredJwtException e) {
             log.info("만료된 JWT 토큰입니다.");
+            return TokenValidationResult.EXPIRED;
         } catch (JwtException | IllegalArgumentException e) {
             log.info("유효하지 않은 JWT 토큰입니다.");
+            return TokenValidationResult.INVALID;
         }
-        return false;
     }
 
     public String resolveToken(HttpServletRequest request) {

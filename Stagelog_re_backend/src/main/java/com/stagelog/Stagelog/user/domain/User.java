@@ -17,10 +17,13 @@ import java.util.regex.Pattern;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.Check;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Check(constraints = "(social_provider_type = 'LOCAL' AND password IS NOT NULL) OR "
+        + "(social_provider_type <> 'LOCAL' AND password IS NULL)")
 @Table(
         name = "users",
         uniqueConstraints = {
@@ -42,7 +45,7 @@ public class User extends BaseEntity {
     @Column(unique = true, nullable = false, updatable = false)
     private String userId;
 
-    @Column(nullable = false)
+    @Column
     private String password;
 
     @Column(nullable = false)
@@ -89,7 +92,7 @@ public class User extends BaseEntity {
         User user = new User();
         user.email = email;
         user.userId = provider.name().toLowerCase() + "_" + providerId;
-        user.password = "SOCIAL_LOGIN";
+        user.password = null;
         user.nickname = nickname;
         user.profileImageUrl = profileImageUrl;
         user.provider = provider;
@@ -171,6 +174,9 @@ public class User extends BaseEntity {
 
     private static void validateProvider(Provider provider, String providerId) {
         if (provider == null || providerId == null || providerId.isBlank()) {
+            throw new InvalidInputException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        if (provider == Provider.LOCAL) {
             throw new InvalidInputException(ErrorCode.INVALID_INPUT_VALUE);
         }
     }

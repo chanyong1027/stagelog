@@ -34,11 +34,14 @@ public class LoginAttemptService {
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recordFailure(String userId, String clientIp) {
         LocalDateTime now = LocalDateTime.now();
-        loginAttemptRepository.findByUserIdAndClientIp(userId, clientIp)
-                .ifPresentOrElse(
-                        attempt -> attempt.recordFailure(now, MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION),
-                        () -> loginAttemptRepository.save(LoginAttempt.create(userId, clientIp, now))
-                );
+        LoginAttempt attempt = loginAttemptRepository.findByUserIdAndClientIp(userId, clientIp)
+                .orElseGet(() -> LoginAttempt.create(userId, clientIp, now));
+
+        attempt.recordFailure(now, MAX_FAILURE_COUNT, FAILURE_WINDOW, LOCK_DURATION);
+
+        if (attempt.getId() == null) {
+            loginAttemptRepository.save(attempt);
+        }
     }
 
     @Transactional

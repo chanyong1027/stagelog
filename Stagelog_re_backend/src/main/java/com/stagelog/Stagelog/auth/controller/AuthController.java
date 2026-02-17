@@ -7,6 +7,8 @@ import com.stagelog.Stagelog.auth.dto.SignupRequest;
 import com.stagelog.Stagelog.auth.dto.TokenResponse;
 import com.stagelog.Stagelog.auth.dto.AuthTokenResult;
 import com.stagelog.Stagelog.auth.service.AuthService;
+import com.stagelog.Stagelog.global.exception.ErrorCode;
+import com.stagelog.Stagelog.global.exception.UnauthorizedException;
 import com.stagelog.Stagelog.global.security.CustomUserDetails;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -67,6 +69,9 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
         String refreshToken = refreshTokenCookieManager.resolveRefreshTokenFromCookie(request);
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new UnauthorizedException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
         AuthTokenResult result = authService.refresh(refreshToken);
         refreshTokenCookieManager.addRefreshTokenCookie(response, result.refreshToken());
         return ResponseEntity.ok(result.toTokenResponse());

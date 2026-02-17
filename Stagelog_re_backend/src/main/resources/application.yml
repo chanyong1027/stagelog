@@ -1,6 +1,8 @@
 spring:
   application:
     name: Stagelog
+  config:
+    import: optional:file:.env[.properties],optional:file:./Stagelog_re_backend/.env[.properties]
   datasource:
     url: ${SPRING_DATASOURCE_URL}
     username: ${SPRING_DATASOURCE_USERNAME}
