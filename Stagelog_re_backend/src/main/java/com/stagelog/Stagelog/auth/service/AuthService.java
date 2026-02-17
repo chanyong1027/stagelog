@@ -3,7 +3,7 @@ package com.stagelog.Stagelog.auth.service;
 import com.stagelog.Stagelog.auth.dto.LoginRequest;
 import com.stagelog.Stagelog.auth.dto.OAuth2LoginRequest;
 import com.stagelog.Stagelog.auth.dto.SignupRequest;
-import com.stagelog.Stagelog.auth.dto.TokenResponse;
+import com.stagelog.Stagelog.auth.dto.AuthTokenResult;
 import com.stagelog.Stagelog.global.exception.DuplicateEntityException;
 import com.stagelog.Stagelog.global.exception.EntityNotFoundException;
 import com.stagelog.Stagelog.global.exception.ErrorCode;
@@ -55,12 +55,12 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse login(LoginRequest request) {
+    public AuthTokenResult login(LoginRequest request) {
         User user = userRepository.findByUserId(request.getUserId())
-                .orElseThrow(() -> new EntityNotFoundException(ErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new UnauthorizedException(ErrorCode.INVALID_PASSWORD);
+        if (!isValidPassword(request.getPassword(), user.getPassword())) {
+            throw new UnauthorizedException(ErrorCode.AUTH_INVALID_CREDENTIALS);
         }
 
         user.updateLastLoginAt();
@@ -69,7 +69,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse loginWithOAuth2(OAuth2LoginRequest request) {
+    public AuthTokenResult loginWithOAuth2(OAuth2LoginRequest request) {
         User user = userService.getOrCreateUser(
                 request.getEmail(),
                 request.getNickname(),
@@ -82,7 +82,7 @@ public class AuthService {
     }
 
     @Transactional
-    public TokenResponse refresh(String refreshTokenValue) {
+    public AuthTokenResult refresh(String refreshTokenValue) {
         if (!jwtTokenProvider.validateToken(refreshTokenValue)) {
             throw new UnauthorizedException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
@@ -109,7 +109,7 @@ public class AuthService {
         // Refresh Token Rotation
         storedToken.rotate(newRefreshToken, jwtProperties.getRefreshTokenValidity());
 
-        return TokenResponse.of(
+        return AuthTokenResult.of(
                 newAccessToken,
                 newRefreshToken,
                 user.getId(),
@@ -123,7 +123,7 @@ public class AuthService {
         refreshTokenRepository.deleteByEmail(email);
     }
 
-    private TokenResponse issueTokens(User user) {
+    private AuthTokenResult issueTokens(User user) {
         String email = user.getEmail();
         String role = user.getRole().getValue();
 
@@ -139,12 +139,20 @@ public class AuthService {
                         )
                 );
 
-        return TokenResponse.of(
+        return AuthTokenResult.of(
                 accessToken,
                 refreshToken,
                 user.getId(),
                 email,
                 user.getNickname()
         );
+    }
+
+    private boolean isValidPassword(String rawPassword, String encodedPassword) {
+        try {
+            return passwordEncoder.matches(rawPassword, encodedPassword);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 }

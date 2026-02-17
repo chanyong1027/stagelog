@@ -1,12 +1,15 @@
 package com.stagelog.Stagelog.auth.controller;
 
+import com.stagelog.Stagelog.auth.cookie.RefreshTokenCookieManager;
 import com.stagelog.Stagelog.auth.dto.LoginRequest;
 import com.stagelog.Stagelog.auth.dto.OAuth2LoginRequest;
-import com.stagelog.Stagelog.auth.dto.RefreshRequest;
 import com.stagelog.Stagelog.auth.dto.SignupRequest;
 import com.stagelog.Stagelog.auth.dto.TokenResponse;
+import com.stagelog.Stagelog.auth.dto.AuthTokenResult;
 import com.stagelog.Stagelog.auth.service.AuthService;
 import com.stagelog.Stagelog.global.security.CustomUserDetails;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -25,6 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final RefreshTokenCookieManager refreshTokenCookieManager;
 
     @GetMapping("/check-userid")
     public ResponseEntity<Boolean> checkUserId(@RequestParam String userId) {
@@ -38,26 +42,40 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<TokenResponse> login(@Valid @RequestBody LoginRequest request) {
-        TokenResponse response = authService.login(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<TokenResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            HttpServletResponse httpResponse
+    ) {
+        AuthTokenResult result = authService.login(request);
+        refreshTokenCookieManager.addRefreshTokenCookie(httpResponse, result.refreshToken());
+        return ResponseEntity.ok(result.toTokenResponse());
     }
 
     @PostMapping("/oauth2/login")
-    public ResponseEntity<TokenResponse> oauth2Login(@Valid @RequestBody OAuth2LoginRequest request) {
-        TokenResponse response = authService.loginWithOAuth2(request);
-        return ResponseEntity.ok(response);
+    public ResponseEntity<TokenResponse> oauth2Login(
+            @Valid @RequestBody OAuth2LoginRequest request,
+            HttpServletResponse httpResponse
+    ) {
+        AuthTokenResult result = authService.loginWithOAuth2(request);
+        refreshTokenCookieManager.addRefreshTokenCookie(httpResponse, result.refreshToken());
+        return ResponseEntity.ok(result.toTokenResponse());
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
-        TokenResponse response = authService.refresh(request.getRefreshToken());
-        return ResponseEntity.ok(response);
+    public ResponseEntity<TokenResponse> refresh(HttpServletRequest request, HttpServletResponse response) {
+        String refreshToken = refreshTokenCookieManager.resolveRefreshTokenFromCookie(request);
+        AuthTokenResult result = authService.refresh(refreshToken);
+        refreshTokenCookieManager.addRefreshTokenCookie(response, result.refreshToken());
+        return ResponseEntity.ok(result.toTokenResponse());
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<Void> logout(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            HttpServletResponse response
+    ) {
         authService.logout(userDetails.getUsername());
+        refreshTokenCookieManager.expireRefreshTokenCookie(response);
         return ResponseEntity.noContent().build();
     }
 }

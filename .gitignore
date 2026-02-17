@@ -38,3 +38,8 @@ tmp/
 ### 시스템 및 기타 ###
 .gradle
 build/
+
+### ai ###
+codex/
+Stagelog_re_backend/docs/
+Stagelog_re_backend/CLAUDE.md

@@ -18,6 +18,9 @@ public enum ErrorCode {
     // ===== Auth 관련 =====
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_001", "유효하지 않은 Refresh Token입니다."),
     EXPIRED_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_002", "만료된 Refresh Token입니다."),
+    AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_003", "아이디/비밀번호가 올바르지 않습니다."),
+    AUTH_ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN, "AUTH_004", "사용이 제한된 계정입니다."),
+    AUTH_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "AUTH_005", "로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
 
     // ===== Performance 관련 =====
     PERFORMANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "PERFORMANCE_001", "공연을 찾을 수 없습니다."),
