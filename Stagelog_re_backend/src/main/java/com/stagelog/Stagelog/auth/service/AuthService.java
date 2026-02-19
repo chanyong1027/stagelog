@@ -17,7 +17,6 @@ import com.stagelog.Stagelog.user.domain.User;
 import com.stagelog.Stagelog.user.domain.UserStatus;
 import com.stagelog.Stagelog.user.repository.UserRepository;
 import com.stagelog.Stagelog.user.service.UserService;
-import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +35,7 @@ public class AuthService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final LoginAttemptService loginAttemptService;
+    private final AuthTokenIssuer authTokenIssuer;
 
     @Transactional(readOnly = true)
     public Boolean existUser(String userId) {
@@ -82,7 +82,7 @@ public class AuthService {
         loginAttemptService.clearFailures(userId, clientIp);
         user.updateLastLoginAt();
 
-        return issueTokens(user);
+        return authTokenIssuer.issueFor(user);
     }
 
     @Transactional
@@ -96,7 +96,7 @@ public class AuthService {
         );
 
         assertActiveUser(user);
-        return issueTokens(user);
+        return authTokenIssuer.issueFor(user);
     }
 
     @Transactional
@@ -130,16 +130,14 @@ public class AuthService {
         }
 
         String role = user.getRole().getValue();
-        String newAccessToken = jwtTokenProvider.createAccessToken(email, role);
-        String newRefreshToken = jwtTokenProvider.createRefreshToken(email, role);
-        String newRefreshTokenHash = refreshTokenHasher.hash(newRefreshToken);
+        TokenPairWithHash pair = authTokenIssuer.createTokenPair(email, role);
 
         // Refresh Token Rotation
-        storedToken.rotate(newRefreshTokenHash, jwtProperties.getRefreshTokenValidity());
+        storedToken.rotate(pair.refreshTokenHash(), jwtProperties.getRefreshTokenValidity());
 
         return AuthTokenResult.of(
-                newAccessToken,
-                newRefreshToken,
+                pair.accessToken(),
+                pair.refreshToken(),
                 user.getId(),
                 user.getEmail(),
                 user.getNickname()
@@ -149,31 +147,6 @@ public class AuthService {
     @Transactional
     public void logout(String email) {
         refreshTokenRepository.deleteByEmail(email);
-    }
-
-    private AuthTokenResult issueTokens(User user) {
-        assertActiveUser(user);
-
-        String email = user.getEmail();
-        String role = user.getRole().getValue();
-
-        String accessToken = jwtTokenProvider.createAccessToken(email, role);
-        String refreshToken = jwtTokenProvider.createRefreshToken(email, role);
-        String refreshTokenHash = refreshTokenHasher.hash(refreshToken);
-
-        refreshTokenRepository.upsertByEmail(
-                email,
-                refreshTokenHash,
-                LocalDateTime.now().plusSeconds(jwtProperties.getRefreshTokenValidity() / 1000)
-        );
-
-        return AuthTokenResult.of(
-                accessToken,
-                refreshToken,
-                user.getId(),
-                email,
-                user.getNickname()
-        );
     }
 
     private boolean isValidPassword(String rawPassword, String encodedPassword) {
