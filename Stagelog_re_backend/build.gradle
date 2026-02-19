@@ -45,4 +45,6 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // DB·외부 환경 없이 실행되는 단위 테스트만 포함. E2E 컨텍스트 로드 테스트는 별도 프로파일에서 실행.
+    exclude '**/StagelogApplicationTests.class'
 }
