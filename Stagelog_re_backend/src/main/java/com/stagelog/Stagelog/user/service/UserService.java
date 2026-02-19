@@ -7,6 +7,7 @@ import com.stagelog.Stagelog.user.domain.User;
 import com.stagelog.Stagelog.user.dto.UserProfileResponse;
 import com.stagelog.Stagelog.user.dto.UserUpdateRequest;
 import com.stagelog.Stagelog.user.repository.UserRepository;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +36,10 @@ public class UserService {
                     User newUser = User.createSocialUser(email, nickname, profileImageUrl, provider, providerId);
                     return userRepository.save(newUser);
                 });
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return userRepository.findByEmail(email);
     }
 
     public User getUserById(Long userId) {
