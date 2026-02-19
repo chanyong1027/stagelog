@@ -11,7 +11,6 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doThrow;
 
 import com.stagelog.Stagelog.auth.dto.LoginRequest;
-import com.stagelog.Stagelog.auth.dto.OAuth2LoginRequest;
 import com.stagelog.Stagelog.auth.dto.AuthTokenResult;
 import com.stagelog.Stagelog.global.exception.ErrorCode;
 import com.stagelog.Stagelog.global.exception.UnauthorizedException;
@@ -20,12 +19,10 @@ import com.stagelog.Stagelog.global.jwt.JwtTokenProvider;
 import com.stagelog.Stagelog.global.jwt.RefreshTokenHasher;
 import com.stagelog.Stagelog.global.jwt.domain.RefreshToken;
 import com.stagelog.Stagelog.global.jwt.repository.RefreshTokenRepository;
-import com.stagelog.Stagelog.user.domain.Provider;
 import com.stagelog.Stagelog.user.domain.Role;
 import com.stagelog.Stagelog.user.domain.User;
 import com.stagelog.Stagelog.user.domain.UserStatus;
 import com.stagelog.Stagelog.user.repository.UserRepository;
-import com.stagelog.Stagelog.user.service.UserService;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -40,8 +37,6 @@ class AuthServiceLoginTest {
 
     @Mock
     private UserRepository userRepository;
-    @Mock
-    private UserService userService;
     @Mock
     private JwtTokenProvider jwtTokenProvider;
     @Mock
@@ -64,7 +59,6 @@ class AuthServiceLoginTest {
         jwtProperties.setRefreshTokenValidity(1209600000L);
         authService = new AuthService(
                 userRepository,
-                userService,
                 jwtTokenProvider,
                 jwtProperties,
                 refreshTokenHasher,
@@ -224,34 +218,4 @@ class AuthServiceLoginTest {
         verify(storedToken).rotate(newRefreshHash, 1209600000L);
     }
 
-    @Test
-    @DisplayName("OAuth2 로그인에서 정지 계정은 토큰 발급이 차단된다")
-    void loginWithOAuth2_withSuspendedUser_throwsAccountBlocked() {
-        OAuth2LoginRequest request = new OAuth2LoginRequest(
-                Provider.GOOGLE,
-                "google-123",
-                "social@example.com",
-                "social-user",
-                "https://example.com/profile.png"
-        );
-
-        User user = mock(User.class);
-        when(userService.getOrCreateUser(
-                request.getEmail(),
-                request.getNickname(),
-                request.getProfileImageUrl(),
-                request.getProvider(),
-                request.getProviderId()
-        )).thenReturn(user);
-        when(user.getStatus()).thenReturn(UserStatus.SUSPENDED);
-
-        assertThatThrownBy(() -> authService.loginWithOAuth2(request))
-                .isInstanceOf(UnauthorizedException.class)
-                .satisfies(throwable -> {
-                    UnauthorizedException exception = (UnauthorizedException) throwable;
-                    assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.AUTH_ACCOUNT_BLOCKED);
-                });
-
-        verify(authTokenIssuer, never()).issueFor(any());
-    }
 }

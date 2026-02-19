@@ -2,7 +2,6 @@ package com.stagelog.Stagelog.auth.controller;
 
 import com.stagelog.Stagelog.auth.cookie.RefreshTokenCookieManager;
 import com.stagelog.Stagelog.auth.dto.LoginRequest;
-import com.stagelog.Stagelog.auth.dto.OAuth2LoginRequest;
 import com.stagelog.Stagelog.auth.dto.SignupRequest;
 import com.stagelog.Stagelog.auth.dto.TokenResponse;
 import com.stagelog.Stagelog.auth.dto.AuthTokenResult;
@@ -52,16 +51,6 @@ public class AuthController {
     ) {
         String clientIp = resolveClientIp(httpRequest);
         AuthTokenResult result = authService.login(request, clientIp);
-        refreshTokenCookieManager.addRefreshTokenCookie(httpResponse, result.refreshToken());
-        return ResponseEntity.ok(result.toTokenResponse());
-    }
-
-    @PostMapping("/oauth2/login")
-    public ResponseEntity<TokenResponse> oauth2Login(
-            @Valid @RequestBody OAuth2LoginRequest request,
-            HttpServletResponse httpResponse
-    ) {
-        AuthTokenResult result = authService.loginWithOAuth2(request);
         refreshTokenCookieManager.addRefreshTokenCookie(httpResponse, result.refreshToken());
         return ResponseEntity.ok(result.toTokenResponse());
     }

@@ -1,7 +1,6 @@
 package com.stagelog.Stagelog.auth.service;
 
 import com.stagelog.Stagelog.auth.dto.LoginRequest;
-import com.stagelog.Stagelog.auth.dto.OAuth2LoginRequest;
 import com.stagelog.Stagelog.auth.dto.SignupRequest;
 import com.stagelog.Stagelog.auth.dto.AuthTokenResult;
 import com.stagelog.Stagelog.global.exception.DuplicateEntityException;
@@ -16,7 +15,6 @@ import com.stagelog.Stagelog.global.jwt.repository.RefreshTokenRepository;
 import com.stagelog.Stagelog.user.domain.User;
 import com.stagelog.Stagelog.user.domain.UserStatus;
 import com.stagelog.Stagelog.user.repository.UserRepository;
-import com.stagelog.Stagelog.user.service.UserService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,7 +26,6 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
-    private final UserService userService;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final RefreshTokenHasher refreshTokenHasher;
@@ -82,20 +79,6 @@ public class AuthService {
         loginAttemptService.clearFailures(userId, clientIp);
         user.updateLastLoginAt();
 
-        return authTokenIssuer.issueFor(user);
-    }
-
-    @Transactional
-    public AuthTokenResult loginWithOAuth2(OAuth2LoginRequest request) {
-        User user = userService.getOrCreateUser(
-                request.getEmail(),
-                request.getNickname(),
-                request.getProfileImageUrl(),
-                request.getProvider(),
-                request.getProviderId()
-        );
-
-        assertActiveUser(user);
         return authTokenIssuer.issueFor(user);
     }
 
