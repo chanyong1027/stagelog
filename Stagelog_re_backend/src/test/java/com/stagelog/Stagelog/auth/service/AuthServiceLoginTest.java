@@ -52,6 +52,8 @@ class AuthServiceLoginTest {
     private PasswordEncoder passwordEncoder;
     @Mock
     private LoginAttemptService loginAttemptService;
+    @Mock
+    private AuthTokenIssuer authTokenIssuer;
 
     private AuthService authService;
 
@@ -68,7 +70,8 @@ class AuthServiceLoginTest {
                 refreshTokenHasher,
                 refreshTokenRepository,
                 passwordEncoder,
-                loginAttemptService
+                loginAttemptService,
+                authTokenIssuer
         );
     }
 
@@ -163,6 +166,7 @@ class AuthServiceLoginTest {
         verify(loginAttemptService, never()).recordFailure("suspended-user", "127.0.0.1");
         verify(loginAttemptService, never()).clearFailures("suspended-user", "127.0.0.1");
         verify(user, never()).updateLastLoginAt();
+        verify(authTokenIssuer, never()).issueFor(any());
     }
 
     @Test
@@ -208,9 +212,9 @@ class AuthServiceLoginTest {
         when(user.getId()).thenReturn(1L);
         when(user.getEmail()).thenReturn(email);
         when(user.getNickname()).thenReturn("tester");
-        when(jwtTokenProvider.createAccessToken(email, Role.USER.getValue())).thenReturn("new-access-token");
-        when(jwtTokenProvider.createRefreshToken(email, Role.USER.getValue())).thenReturn(newRefreshToken);
-        when(refreshTokenHasher.hash(newRefreshToken)).thenReturn(newRefreshHash);
+        // AuthTokenIssuer.createTokenPair()은 package-private — 같은 패키지에서 stubbing 가능
+        when(authTokenIssuer.createTokenPair(email, Role.USER.getValue()))
+                .thenReturn(new TokenPairWithHash("new-access-token", newRefreshToken, newRefreshHash));
 
         AuthTokenResult result = authService.refresh(oldRefreshToken);
 
@@ -248,8 +252,6 @@ class AuthServiceLoginTest {
                     assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.AUTH_ACCOUNT_BLOCKED);
                 });
 
-        verify(jwtTokenProvider, never()).createAccessToken(anyString(), anyString());
-        verify(jwtTokenProvider, never()).createRefreshToken(anyString(), anyString());
-        verify(refreshTokenRepository, never()).upsertByEmail(anyString(), anyString(), any());
+        verify(authTokenIssuer, never()).issueFor(any());
     }
 }

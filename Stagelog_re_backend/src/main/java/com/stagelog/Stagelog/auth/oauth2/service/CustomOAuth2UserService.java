@@ -7,6 +7,7 @@ import com.stagelog.Stagelog.user.domain.User;
 import com.stagelog.Stagelog.user.domain.UserStatus;
 import com.stagelog.Stagelog.user.service.UserService;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -41,6 +42,17 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 .getUserNameAttributeName();
 
         OAuth2UserInfo userInfo = OAuth2UserInfoFactory.of(registrationId, oAuth2User.getAttributes());
+        return processUserInfo(userInfo, oAuth2User.getAttributes(), nameAttributeKey);
+    }
+
+    /**
+     * provider 검증 + 이메일 충돌 확인 + 유저 동기화 + 계정 상태 확인.
+     * HTTP 호출(super.loadUser) 이후 단계를 분리해 단위 테스트 가능하게 한다 (package-private).
+     */
+    OAuth2User processUserInfo(
+            OAuth2UserInfo userInfo,
+            Map<String, Object> attributes,
+            String nameAttributeKey) {
 
         validateProviderId(userInfo);
         validateEmail(userInfo);
@@ -50,7 +62,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         return new CustomOAuth2User(
                 user,
-                oAuth2User.getAttributes(),
+                attributes,
                 List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
                 nameAttributeKey
         );
