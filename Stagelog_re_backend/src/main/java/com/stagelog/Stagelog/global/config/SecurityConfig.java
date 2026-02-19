@@ -1,5 +1,7 @@
 package com.stagelog.Stagelog.global.config;
 
+import com.stagelog.Stagelog.auth.oauth2.handler.OAuth2AuthenticationFailureHandler;
+import com.stagelog.Stagelog.auth.oauth2.handler.OAuth2AuthenticationSuccessHandler;
 import com.stagelog.Stagelog.auth.oauth2.repository.CookieAuthorizationRequestRepository;
 import com.stagelog.Stagelog.auth.oauth2.service.CustomOAuth2UserService;
 import com.stagelog.Stagelog.global.jwt.JwtAuthenticationFilter;
@@ -31,6 +33,8 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final CookieAuthorizationRequestRepository cookieAuthorizationRequestRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final OAuth2AuthenticationSuccessHandler oAuth2SuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oAuth2FailureHandler;
 
     @Value("${app.cors.allowed-origins}")
     private String allowedOriginsRaw;
@@ -66,6 +70,8 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
                         )
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
