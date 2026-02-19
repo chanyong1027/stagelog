@@ -21,6 +21,9 @@ public enum ErrorCode {
     AUTH_INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_003", "아이디/비밀번호가 올바르지 않습니다."),
     AUTH_ACCOUNT_BLOCKED(HttpStatus.FORBIDDEN, "AUTH_004", "사용이 제한된 계정입니다."),
     AUTH_TOO_MANY_ATTEMPTS(HttpStatus.TOO_MANY_REQUESTS, "AUTH_005", "로그인 시도 횟수를 초과했습니다. 잠시 후 다시 시도해주세요."),
+    AUTH_OAUTH2_PROVIDER_ERROR(HttpStatus.BAD_GATEWAY, "AUTH_006", "소셜 로그인 처리 중 오류가 발생했습니다."),
+    AUTH_OAUTH2_MISSING_EMAIL(HttpStatus.BAD_REQUEST, "AUTH_007", "소셜 계정에서 이메일을 제공받지 못했습니다."),
+    AUTH_OAUTH2_EMAIL_CONFLICT(HttpStatus.CONFLICT, "AUTH_008", "이미 가입된 계정입니다."),
 
     // ===== Performance 관련 =====
     PERFORMANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "PERFORMANCE_001", "공연을 찾을 수 없습니다."),

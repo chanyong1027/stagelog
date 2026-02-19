@@ -26,6 +26,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtTokenProvider jwtTokenProvider;
     private final ObjectMapper objectMapper;
 
+    /**
+     * OAuth2 진입/콜백 경로와 /error 경로는 JWT 필터를 명시적으로 건너뛴다.
+     * "토큰이 null이면 통과"하는 암묵 동작에 의존하지 않고 명시 규칙으로 고정한다.
+     * /error 포함 이유: OAuth2 실패 핸들러 → Spring /error forward 시 이중 처리 방지
+     */
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return path.startsWith("/oauth2/")
+                || path.startsWith("/login/oauth2/")
+                || path.equals("/error");
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {

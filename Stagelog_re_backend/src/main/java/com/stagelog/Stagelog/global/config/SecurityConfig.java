@@ -1,10 +1,12 @@
 package com.stagelog.Stagelog.global.config;
 
+import com.stagelog.Stagelog.auth.oauth2.repository.CookieAuthorizationRequestRepository;
 import com.stagelog.Stagelog.global.jwt.JwtAuthenticationFilter;
 import com.stagelog.Stagelog.global.security.JwtAuthenticationEntryPoint;
 import java.util.Arrays;
-import java.util.Collections;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -26,6 +28,10 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
+    private final CookieAuthorizationRequestRepository cookieAuthorizationRequestRepository;
+
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOriginsRaw;
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -43,10 +49,18 @@ public class SecurityConfig {
                 .exceptionHandling(ex -> ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/logout").authenticated()
-                        .requestMatchers("/api/auth/**", "/api/performances/**", "/api/migration/**",
-                                "/performance-admin.html").permitAll()
+                        .requestMatchers(
+                                "/api/auth/**", "/api/performances/**", "/api/migration/**",
+                                "/performance-admin.html",
+                                "/oauth2/**", "/login/oauth2/**"
+                        ).permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestRepository(cookieAuthorizationRequestRepository)
+                        )
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
@@ -56,20 +70,13 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
 
-        // 프론트엔드 주소 허용 (포트 5173)
-        configuration.setAllowedOrigins(Collections.singletonList("http://localhost:5173"));
-
-        // 허용할 HTTP 메서드
+        List<String> allowedOrigins = Arrays.asList(allowedOriginsRaw.split(","));
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
-
-        // 허용할 헤더
-        configuration.setAllowedHeaders(Collections.singletonList("*"));
-
-        // 쿠키나 인증 정보를 포함할지 여부 (필요하다면 true)
+        configuration.setAllowedHeaders(List.of("*"));
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
-        // 모든 경로에 대해 위 설정을 적용
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
