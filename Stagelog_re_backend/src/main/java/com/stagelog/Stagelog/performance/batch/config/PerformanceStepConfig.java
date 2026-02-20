@@ -1,5 +1,6 @@
 package com.stagelog.Stagelog.performance.batch.config;
 
+import com.stagelog.Stagelog.performance.batch.listener.BatchStepMdcListener;
 import com.stagelog.Stagelog.performance.batch.processor.PerformanceDetailItemProcessor;
 import com.stagelog.Stagelog.performance.batch.processor.PerformanceItemProcessor;
 import com.stagelog.Stagelog.performance.batch.reader.PerformanceItemReader;
@@ -31,6 +32,7 @@ public class PerformanceStepConfig {
     private final PerformanceItemWriter performanceItemWriter;
 
     private final KopisPerformanceRepository kopisPerformanceRepository;
+    private final BatchStepMdcListener batchStepMdcListener;
 
     private static final int CHUNK_SIZE = 100;
     private static final int DETAIL_CHUNK_SIZE = 30;
@@ -42,6 +44,7 @@ public class PerformanceStepConfig {
                 .reader(performanceItemReader)
                 .processor(performanceItemProcessor)
                 .writer(performanceItemWriter)
+                .listener(batchStepMdcListener)
                 .build();
     }
 
@@ -68,6 +71,7 @@ public class PerformanceStepConfig {
                 .reader(performanceDetailReader)
                 .processor(performanceDetailProcessor)
                 .writer(performanceItemWriter)
+                .listener(batchStepMdcListener)
                 .build();
     }
 }

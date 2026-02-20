@@ -40,12 +40,9 @@ spring:
       enabled: false
 
 logging:
-  file:
-    name: logs/bootstrap.log
-  pattern:
-    file: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
   level:
     com.stagelog: INFO
+    org.springframework.batch: WARN
     org.hibernate: OFF
 
 external:
