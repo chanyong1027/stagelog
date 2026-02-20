@@ -43,3 +43,8 @@ build/
 codex/
 Stagelog_re_backend/docs/
 Stagelog_re_backend/CLAUDE.md
+AGENTS.md
+docs/
+refs/
+### Claude ###
+claude/

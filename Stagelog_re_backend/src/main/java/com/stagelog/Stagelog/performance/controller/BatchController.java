@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/admin/batch")
+@RequestMapping("/api/admin/batch")
 @RequiredArgsConstructor
 public class BatchController {
     private final BatchService batchService;

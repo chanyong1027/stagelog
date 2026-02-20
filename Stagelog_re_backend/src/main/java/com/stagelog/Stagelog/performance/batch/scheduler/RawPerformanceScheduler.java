@@ -14,23 +14,19 @@ import org.springframework.stereotype.Component;
 public class RawPerformanceScheduler {
 
     private final BatchService batchService;
-    //private final KopisToRefineService kopisToRefineService;
 
-    // 매일 새벽 2시 0분 0초에 실행
-    @Scheduled(cron = "0 24 11 * * *")
+    // 매일 새벽 2시에 실행
+    @Scheduled(cron = "0 0 2 * * *")
     public void runDailyFetch() {
-        log.info("=== 테스트용 정기 배치가 10:20에 시작되었습니다 ===");
+        log.info("=== 정기 배치 시작 (새벽 2시) ===");
 
         String startDate = LocalDate.now().minusDays(7).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         // 1. 목록 가져오기 및 신규 저장/업데이트
         batchService.runJob("performanceFetchJob", startDate);
 
         // 2. 상세 정보가 없는 항목들 상세 정보 채우기
-        // (performanceFetchJob이 끝나고 실행되도록 순차 실행 추천)
         batchService.runJob("performanceDetailJob", null);
 
-        log.info("=== 테스트용 정기 배치 완료 ===");
-
-        //kopisToRefineService.refineKopisData();
+        log.info("=== 정기 배치 완료 ===");
     }
 }
